@@ -181,7 +181,7 @@ def wf_trigger(req, username):
 
     allowed = user["groups"]
     allowed.append(username)
-    allowed.append("openfaas-fn")
+    allowed.append("world")
 
     functions = wf["functions"]
 
@@ -189,7 +189,7 @@ def wf_trigger(req, username):
 
     for key in functions.keys():
         endpoint = functions[key]["endpoint"]
-        scope = endpoint.split(".")[-1]
+        scope = endpoint.split("-")[-1]
         scopes.add(scope)
 
     for scope in scopes:
@@ -264,9 +264,9 @@ def handle(req):
         crypted = wf["functions"][fun_ref]["crypted"]
     if crypted:
         endpoint = wf["functions"][fun_ref]["endpoint"]
-        role = endpoint.split(".")[-1]
-        if role == "openfaas-fn":
-            role = "world"
+        role = endpoint.split("-")[-1]
+#        if role == "openfaas-fn":
+#            role = "world"
         key = ""
         iv = ""
         with open('/vault/secrets/' + role, 'r') as f:
@@ -289,20 +289,20 @@ def el_deploy(req, username, update):
     r = get_redis()
     user = r.json().get(username)
 
-    allowed = [username, "openfaas-fn"]
+    allowed = [username, "world"]
 
     if req["group"] == True:
         allowed = user["groups"]
     
-    if req["namespace"] not in allowed:
+    if req["policy"] not in allowed:
         return 401
 
     constraints = []
     role = ""
 
-    if req["namespace"] != "openfaas-fn":
-        constraints = [req["namespace"] + "=true"]
-        role = req["namespace"]
+    if req["policy"] != "world":
+#        constraints = [req["namespace"] + "=true"]
+        role = req["policy"]
     else:
         role= "world"
 
@@ -316,13 +316,12 @@ def el_deploy(req, username, update):
     headers["Authorization"] = "Basic " + base64.b64encode((openfaas_admin + ":" + openfaas_password).encode("ascii")).decode("ascii")
     
     payload = {
-        "service": req["service"],
+        "service": req["service"] + "-" + req["policy"],
         "image": req["image"],
         "constraints": constraints,
         "labels": req["labels"],
         "annotations": annotations,
-        "secrets": req["secrets"],
-        "namespace": req["namespace"]
+        "secrets": req["secrets"]
     }
     
     resp = "Empty response"
@@ -331,12 +330,12 @@ def el_deploy(req, username, update):
         resp = request("PUT", url="http://gateway.openfaas.svc.cluster.local:8080/system/functions", headers=headers, data=json.dumps(payload))
     else:
         resp = request("POST", url="http://gateway.openfaas.svc.cluster.local:8080/system/functions", headers=headers, data=json.dumps(payload))
-    print(resp)
+    #return resp.text
     return resp.status_code
-    if (resp.status_code == 202):
-        return True
-    else:
-        return False
+#    if (resp.status_code == 202):
+#        return True
+#    else:
+#        return False
 
 def annotate_function(role):
     annotations = dict()
