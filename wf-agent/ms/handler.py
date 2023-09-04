@@ -68,7 +68,9 @@ def find_activable(wf, exec):
     locals().update(vars)
     activable = []
     for state, eq in exec["equations"].items():
-        if state not in exec["triggered"] and eval(eq):
+        if type(eq) == str:
+            eq = eval(eq)
+        if state not in exec["triggered"] and eq:
             activable.append(state)
     return activable
         
@@ -321,7 +323,8 @@ def el_deploy(req, username, update):
         "constraints": constraints,
         "labels": req["labels"],
         "annotations": annotations,
-        "secrets": req["secrets"]
+        "secrets": req["secrets"],
+        "envVars": req["envVars"]
     }
     
     resp = "Empty response"

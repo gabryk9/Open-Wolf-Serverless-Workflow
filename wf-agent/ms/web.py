@@ -191,7 +191,7 @@ def event(request: Union[Dict,Any], response: Response, current_user: str = Depe
     if type(request) == str: 
         request = json.dumps(request)
     elif type(request) == bytes:
-        request = json.loads(request.decode('utf-8'))
+        request = json.loads(request)
     elif type(request) != dict:
         raise ValueError("type in body not recognized")
     try:
@@ -213,7 +213,7 @@ def event(request: Union[Dict,Any], response: Response):
     if type(request) == str: 
         request = json.dumps(request)
     elif type(request) == bytes:
-        request = json.loads(request.decode('utf-8'))
+        request = json.loads(request)
     elif type(request) != dict:
         raise ValueError("type in body not recognized")
     print(f"request{request}")
