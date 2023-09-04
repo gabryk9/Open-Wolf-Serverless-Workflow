@@ -42,6 +42,9 @@ def new_execution(r, wf, exec_id):
     for key, value in wf["workflow"].items():
         equations[key] = value["activation"]
     doc = {
+        "data": {
+
+        },
         "outputs": {
 
         },
@@ -56,12 +59,13 @@ def update_execution(r, wf, exec_id, state, output):
     doc["outputs"][state] = {
         "data": output
     }
+    doc["data"].update(output) 
     equation = doc["equations"].pop(state, None)
     doc["solved_equations"][state] = equation
     activable = find_activable(wf, doc)
     doc["triggered"] += activable
     r.json().set(exec_id, Path.rootPath(), doc)
-    return activable
+    return activable, doc["data"]
 
 def find_activable(wf, exec):
     vars = {state: state in exec["outputs"].keys() for state in wf["states"].keys()}
@@ -81,13 +85,13 @@ def openfaas_invoker(conf, data):
     headers["X-Callback-Url"] = f'{this["host"]}exec'
     #headers["X-Callback-Url"] = 'http://172.16.1.176:31114/exec'
     print("Invoke", conf["endpoint"], headers)
-    print("Data sent:")
-    print(data)
+    #print("Data sent:")
+    #print(data)
     request("POST", url=conf["endpoint"], headers=headers, data=json.dumps(data))
 
 def encrypt(data,key,iv):
-    print("to be encrypted:")
-    print(data)
+    #print("to be encrypted:")
+    #print(data)
 
     cipher = Cipher(algorithms.AES(key), modes.CFB(iv))
     enc = cipher.encryptor()
@@ -100,8 +104,8 @@ def encrypt(data,key,iv):
     return data_encrypted
 
 def decrypt(data,key,iv):
-    print("to be decrypted:")
-    print(data)
+    #print("to be decrypted:")
+    #print(data)
 
     cipher = Cipher(algorithms.AES(key), modes.CFB(iv))
     dec = cipher.decryptor()
@@ -227,9 +231,10 @@ def wf_trigger(req, username):
     print("Updating execution")
 
     print(f"Received {state}\n")
-    activable = update_execution(r, wf, exec_id, state, output)
+    activable, data = update_execution(r, wf, exec_id, state, output)
     print("Releasing semaphore")
     sem.release()
+    req["data"] = data
     ##### QUA NON SI DECIFRA #######
     if len(activable) > 0:
         session = None
@@ -239,7 +244,7 @@ def wf_trigger(req, username):
     return True
 
 def handle(req):
-    print("Received body", req, type(req))
+    #print("Received body", req, type(req))
     wid = f'workflow.{req["ctx"]["workflowID"]}'
     r = get_redis()
     wf = r.json().get(wid)
@@ -254,9 +259,10 @@ def handle(req):
     print("Acquiring semaphore")
     print("Updating execution")
     print(f"Received {state}\n")
-    activable = update_execution(r, wf, exec_id, state, output)
+    activable, data = update_execution(r, wf, exec_id, state, output)
     print("Releasing semaphore")
     sem.release()
+    req["data"] = data
 
     ##### QUA DECIFRARE CON CHIAVE STATO RICEVUTO #######
 
