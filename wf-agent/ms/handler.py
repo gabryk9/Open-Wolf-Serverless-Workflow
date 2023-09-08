@@ -9,7 +9,8 @@ from typing import Union
 from jose import jwt
 from datetime import datetime, timedelta
 import base64
-from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+import subprocess
+import os
 
 
 this ={'path': path.dirname(path.realpath(__file__)), "host": getenv("THIS") }
@@ -240,6 +241,16 @@ def wf_trigger(req, username):
         session = None
         for act_state in activable:
             req["ctx"]["state"] = act_state
+            input_filter = wf["workflow"][act_state]["inputFilter"]
+            if input_filter != "":
+                filename = "data-" + act_state + "-" + exec_id + ".json"
+                with open(filename, "w") as datafile:
+                    json.dump(req["data"], datafile)
+                jq_output = subprocess.check_output("jq '" + input_filter + "' " + filename, shell=True)
+                req["data"] = json.loads(jq_output)
+                os.remove(filename)
+                #print("Filtered data:")
+                #print(req["data"])
             trigger(wf, act_state, req)
     return True
 
@@ -282,12 +293,23 @@ def handle(req):
             key = bytes(secret["data"]["key"], 'utf-8')
             iv = bytes(secret["data"]["iv"], 'utf-8')
         req["data"] = decrypt(req["data"], key, iv)
-
-
+    
     if len(activable) > 0:
         session = None
         for act_state in activable:
             req["ctx"]["state"] = act_state
+            input_filter = wf["workflow"][act_state]["inputFilter"]
+            if input_filter != "":
+                filename = "data-" + act_state + "-" + exec_id + ".json"
+                with open(filename, "w") as datafile:
+                    json.dump(req["data"], datafile)
+                jq_output = subprocess.check_output("jq '" + input_filter + "' " + filename, shell=True)
+                print("jq output:")
+                print(jq_output)
+                req["data"] = json.loads(jq_output)
+                os.remove(filename)
+                #print("Filtered data:")
+                #print(req["data"])
             trigger(wf, act_state, req)
     if "end" in wf["states"][state] and wf["states"][state]["end"]:
         finalize(wf["callbackUrl"], req)
@@ -305,7 +327,7 @@ def el_deploy(req, username, update):
     if req["policy"] not in allowed:
         return 401
 
-    constraints = []
+    constraints = req["constraints"]
     role = ""
 
     if req["policy"] != "world":

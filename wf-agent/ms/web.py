@@ -209,20 +209,21 @@ def event(request: Union[Dict,Any], response: Response, current_user: str = Depe
 
 @app.post("/exec")
 def event(request: Union[Dict,Any], response: Response):
-    #print(f"request-unmarshalled{request}")
+    print(f"request-unmarshalled{request}")
     if type(request) == str: 
         request = json.dumps(request)
     elif type(request) == bytes:
         request = json.loads(request)
     elif type(request) != dict:
         raise ValueError("type in body not recognized")
-    #print(f"request{request}")
+    print(f"request{request}")
     try:
         #exec_token_data = decode_exec_token(request["exec_token"])
         """ user = get_current_user(request["token"])
         print("user:")
         print(user) """
         #print(f"token-data: {token_data}")
+        #print(f"request: {request}")
         if "exec_token" in request:
             exec_token_data = decode_exec_token(request["exec_token"])
             if exec_token_data is None:
